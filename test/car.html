@@ -1,1 +1,123 @@
+<html>
+<head>
+<title>car</title>
+</head>
 
+<body>
+<script src="https://www.dcodes.org/jshelpers/matrix3.js"></script>
+<script>
+var canvas = document.createElement("canvas");
+canvas.width = 800;
+canvas.height = 600;
+canvas.style.border = "1px solid black";
+document.body.appendChild(canvas);
+var context = canvas.getContext("2d");
+
+function line( transform, x1, y1, x2, y2 ) {
+	var p1 = transform.mul( Vector3.point(x1, y1) );
+	var p2 = transform.mul( Vector3.point(x2, y2) );
+	context.moveTo(p1.x, p1.y);
+	context.lineTo(p2.x, p2.y);
+}
+
+var controls = {
+	up: 0,
+	down: 0,
+	left: 0,
+	right: 0
+};
+
+var binds = {
+	"KeyW": "up",
+	"ArrowUp": "up",
+	"KeyA": "left",
+	"ArrowLeft": "left",
+	"KeyS": "down",
+	"ArrowDown": "down",
+	"KeyD": "right",
+	"ArrowRight": "right"
+};
+
+document.body.onkeydown = function(evt) {
+	var bind = binds[evt.code];
+	if( bind ) {
+		controls[bind] = 1;
+	}
+};
+document.body.onkeyup = function(evt) {
+	var bind = binds[evt.code];
+	if( bind ) {
+		controls[bind] = 0;
+	}
+};
+
+var camera = Matrix3.translate( Vector3.vector( canvas.width/2, canvas.height/2 ) );
+camera = camera.mul(Matrix3.scale( Vector3.vector(1, -1)) );
+
+function clamp( val, min, max ) {
+	return Math.max( Math.min( val, max ), min );
+}
+
+var car = {
+	p: Vector3.point(100, 100),
+	v: Vector3.vector(0, 0),
+	angle: 0,
+	steer: 0,
+	a: 0,
+	w: 0,
+	draw: function( camera ) {
+	
+		// basic forces
+		var steerDirection = controls.right - controls.left;
+		if( steerDirection ) {
+			this.steer = clamp( this.steer + steerDirection * 0.02, -0.8, 0.8 )
+		} else {
+			this.steer *= 0.95;
+		}
+		this.a = ( controls.up - controls.down ) * 0.04;
+		var acceleration = Vector3.vector(
+			Math.sin(this.angle) * this.a,
+			Math.cos(this.angle) * this.a
+		);
+		this.v = this.v.add( acceleration );
+
+		// reactions
+		var car_lateral = Vector3.vector( Math.cos(this.angle), -Math.sin(this.angle) );
+		var front_v = this.v.add( car_lateral.mul( Vector3.vector( this.w * 10, this.w * 10 ) ) );
+		var rear_v = this.v.add( car_lateral.mul( Vector3.vector( this.w * -10, this.w * -10 ) ) );
+
+		var rear_lateral = car_lateral;
+		var rear_lateral_amount = - rear_lateral.dot(rear_v);
+		var rear_lateral_force = rear_lateral.mul( Vector3.vector( rear_lateral_amount, rear_lateral_amount ) );
+
+		var steer_lateral = Vector3.vector( Math.cos(this.angle+this.steer), -Math.sin(this.angle+this.steer) );
+		var steer_lateral_amount = - steer_lateral.dot(front_v);
+		var steer_lateral_force = steer_lateral.mul( Vector3.vector( steer_lateral_amount, steer_lateral_amount ) );
+		var steer_torque_amount = steer_lateral_force.dot(car_lateral);
+
+		this.v = this.v.add(rear_lateral_force).add(steer_lateral_force);
+		this.w = this.w + ( steer_torque_amount - rear_lateral_amount ) / 20;
+
+		this.p = this.p.add(this.v);
+		this.angle = this.angle + this.w;
+
+		var transform = camera.mul( Matrix3.translate( this.p ) );
+		transform = transform.mul( Matrix3.rotate( this.angle ) );
+		line( transform, -10,  20,  10,  20 );
+		line( transform,  10,  20,  10, -20 );
+		line( transform, -10, -20, -10,  20 );
+		line( transform,  10, -20, -10, -20 );
+	}
+};
+
+function update() {
+	context.clearRect(0, 0, canvas.width, canvas.height);
+	context.beginPath();
+	car.draw( camera );
+	context.stroke();
+	window.requestAnimationFrame( update );
+}
+window.requestAnimationFrame( update );
+</script>
+</body>
+</html>
