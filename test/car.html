@@ -99,6 +99,31 @@ var block = {
     }
 };
 
+var stats = document.createElement( "pre" );
+document.body.appendChild( stats );
+
+function wrapAngle( angle ) {
+    while( angle < 0 ) {
+        angle += Math.PI * 2;
+    }
+    while( angle > Math.PI * 2 ) {
+        angle -= Math.PI * 2;
+    }
+    return angle;
+}
+function angleDistance( from, to ) {
+    var result = to - from;
+    if( result < -Math.PI ) {
+        return result + Math.PI * 2;
+    }
+    if( result > Math.PI ) {
+        return result - Math.PI * 2;
+    }
+    return result;
+}
+
+var asdf = 0;    
+
 var car = {
 	p: Vector3.point(0, 0),
 	v: Vector3.vector(0, 0),
@@ -107,6 +132,7 @@ var car = {
 	a: 0,
 	w: 0,
 	draw: function( camera ) {
+        asdf ++;
 
         var car_lateral = Vector3.vector( Math.cos(this.angle), -Math.sin(this.angle) );
         var self = this;
@@ -115,14 +141,26 @@ var car = {
 			decals.add(self.p.add(car_lateral.mul(Vector3.vector(-5,-5))));
         };
 
+        var steer_limit = 0.5;
+        var steer_target = 0;
+        if( this.v.getLength() > 8 ) {
+            var v_angle = wrapAngle( Math.atan2( this.v.x, this.v.y ) );
+            v_angle = wrapAngle( this.angle - v_angle );
+            steer_target = angleDistance(v_angle, 0);
+            //steer_target = clamp( steer_target, -steer_limit, steer_limit);
+            if( asdf % 10 === 0 ) {
+                stats.innerText = this.v.getLength();
+            }
+        }
+
 		// basic forces
 		var steerDirection = controls.right - controls.left;
 		if( controls.left ) {
-			this.steer = clamp( this.steer - 0.02 / this.v.getLength(), -0.5, 0.5 );
+			this.steer = clamp( this.steer - 0.02 / this.v.getLength(), -steer_limit, steer_limit );
 		} else if( controls.right ) {
-			this.steer = clamp( this.steer + 0.02 / this.v.getLength(), -0.5, 0.5 );
+			this.steer = clamp( this.steer + 0.02 / this.v.getLength(), -steer_limit, steer_limit );
 		} else {
-			this.steer *= 0.95;
+			this.steer = this.steer * 0.95 + steer_target * 0.05;
 		}
 		this.a = ( controls.up - controls.down ) * 0.04;
 		var acceleration = Vector3.vector(
@@ -164,7 +202,7 @@ var car = {
 		this.w = this.w + ( steer_torque_amount - rear_lateral_amount ) / 20;
 
 		this.p = this.p.add(this.v);
-		this.angle = this.angle + this.w;
+		this.angle = wrapAngle( this.angle + this.w );
 
 		var transform = camera;
 		transform = transform.mul( Matrix3.translate( this.p ) );
