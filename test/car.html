@@ -141,28 +141,14 @@ var car = {
 			decals.add(self.p.add(car_lateral.mul(Vector3.vector(-5,-5))));
         };
 
-        var steer_limit = 0.5;
-        var steer_target = 0;
-        if( this.v.getLength() > 8 ) {
-            var v_angle = wrapAngle( Math.atan2( this.v.x, this.v.y ) );
-            v_angle = wrapAngle( this.angle - v_angle );
-            steer_target = angleDistance(v_angle, 0);
-            //steer_target = clamp( steer_target, -steer_limit, steer_limit);
-            if( asdf % 10 === 0 ) {
-                stats.innerText = this.v.getLength();
-            }
-        }
-
 		// basic forces
+        var steer_limit = 0.5;
 		var steerDirection = controls.right - controls.left;
-		if( controls.left ) {
-			this.steer = clamp( this.steer - 0.02 / this.v.getLength(), -steer_limit, steer_limit );
-		} else if( controls.right ) {
-			this.steer = clamp( this.steer + 0.02 / this.v.getLength(), -steer_limit, steer_limit );
-		} else {
-			this.steer = this.steer * 0.95 + steer_target * 0.05;
-		}
-		this.a = ( controls.up - controls.down ) * 0.04;
+        var steerStep = 0.3 / clamp( this.v.getLength(), 4, 10 );
+        this.steer = wrapAngle( this.steer + steerDirection * steerStep );
+        this.steer = wrapAngle( this.angle + clamp( angleDistance( this.angle, this.steer ), -steer_limit, steer_limit ) );
+
+        this.a = ( controls.up - controls.down ) * 0.04;
 		var acceleration = Vector3.vector(
 			Math.sin(this.angle) * this.a,
 			Math.cos(this.angle) * this.a
@@ -193,7 +179,7 @@ var car = {
 		}
 		var rear_lateral_force = rear_lateral.mul( Vector3.vector( rear_lateral_amount, rear_lateral_amount ) );
 
-		var steer_lateral = Vector3.vector( Math.cos(this.angle+this.steer), -Math.sin(this.angle+this.steer) );
+		var steer_lateral = Vector3.vector( Math.cos(this.steer), -Math.sin(this.steer) );
 		var steer_lateral_amount = clamp( - steer_lateral.dot(front_v), -front_tire_force, front_tire_force );
 		var steer_lateral_force = steer_lateral.mul( Vector3.vector( steer_lateral_amount, steer_lateral_amount ) );
 		var steer_torque_amount = steer_lateral_force.dot(car_lateral);
@@ -211,6 +197,7 @@ var car = {
 		line( transform,  10,  20,  10, -20 );
 		line( transform, -10, -20, -10,  20 );
 		line( transform,  10, -20, -10, -20 );
+        //line( transform, 0, 10, 0+Math.sin(this.steer-this.angle)*40, 10+Math.cos(this.steer-this.angle)*40);
 	}
 };
 
