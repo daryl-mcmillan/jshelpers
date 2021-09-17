@@ -1,0 +1,95 @@
+<html>
+<head>
+<title>collide</title>
+</head>
+
+<body>
+<script src="https://www.dcodes.org/jshelpers/matrix3.js"></script>
+<script>
+var canvas = document.createElement("canvas");
+canvas.width = 800;
+canvas.height = 600;
+canvas.style.border = "1px solid black";
+document.body.appendChild(canvas);
+var context = canvas.getContext("2d");
+
+function line( p1, p2 ) {
+	context.moveTo(p1.x, p1.y);
+	context.lineTo(p2.x, p2.y);
+}
+
+var Box = function( p, v, m, a, w, i ) {
+	this.p = p;
+	this.v = v;
+	this.m = m;
+	this.a = a;
+	this.w = w;
+	this.i = i;
+	return this;
+};
+
+Box.prototype.points = [
+	Vector3.point(-100, 100),
+	Vector3.point( 100, 100),
+	Vector3.point( 100,-100),
+	Vector3.point(-100,-100)
+];
+
+Box.prototype.sides = [
+	{ p1: 0, p2: 1 },
+	{ p1: 1, p2: 2 },
+	{ p1: 2, p2: 3 },
+	{ p1: 3, p2: 0 }
+];
+
+Box.prototype.draw = function( camera ) {
+	var transform = camera;
+	transform = transform.mul( Matrix3.translate(this.p) );
+	transform = transform.mul( Matrix3.rotate( this.a ) );
+	
+	var points = transform.mul( this.points );
+	for( var i=0; i<this.sides.length; i++ ) {
+		var l = this.sides[i];
+		line( points[l.p1], points[l.p2] );
+	}
+};
+
+var boxes = [
+	new Box(
+		Vector3.point( 200, 50 ), Vector3.vector( -1, 0 ), 1,
+		0, -0.01, 1
+	),
+	new Box(
+		Vector3.point( -200, -50 ), Vector3.vector( 1, 0 ), 1,
+		0, 0.012, 1
+	)
+];
+
+function update( objs ) {
+	for( var i=0; i<objs.length; i++ ) {
+		var obj = objs[i];
+		obj.p = obj.p.add(obj.v);
+		obj.a = obj.a + obj.w;
+	}
+}
+
+var camera = Matrix3.identity();
+camera = camera.mul( Matrix3.translate( Vector3.vector( canvas.width/2, canvas.height/2 ) ) );
+camera = camera.mul( Matrix3.scale( Vector3.vector( 0.5, -0.5 ) ) );
+
+function draw() {
+	update(boxes);
+	context.clearRect(0, 0, canvas.width, canvas.height);
+	context.beginPath();
+	boxes.forEach( box => {
+		box.draw(camera);
+	} );
+	context.stroke();
+	window.requestAnimationFrame( draw );
+}
+
+window.requestAnimationFrame( draw );
+
+</script>
+</body>
+</html>

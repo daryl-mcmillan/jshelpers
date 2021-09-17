@@ -65,10 +65,16 @@ Matrix3.prototype.mul = function( other ) {
             this.m31 * other.m13 + this.m32 * other.m23 + this.m33 * other.m33
         );
     }
+	if( other instanceof Array ) {
+		var self = this;
+		return other.map( function( v ) {
+			return self.mul( v );
+		} );
+	}
     throw "unknown other type";
 };
 
-Matrix3.unit = function() {
+Matrix3.identity = function() {
   return new Matrix3(
     1, 0, 0,
     0, 1, 0,
