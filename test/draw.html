@@ -1,0 +1,33 @@
+<html>
+<head>
+<title>draw</title>
+</head>
+
+<body style="background-color: black">
+<script>
+var canvas = document.createElement("canvas");
+canvas.width = 400;
+canvas.height = 240;
+canvas.style.border = "1px solid white";
+document.body.appendChild(canvas);
+var context = canvas.getContext("2d");
+context.strokeStyle = "white"
+document.body.appendChild( document.createElement("br") );
+var txt = document.createElement("textarea");
+txt.rows = 20;
+txt.cols = 80;
+document.body.appendChild(txt);
+
+function update() {
+    context.clearRect( 0, 0, canvas.width, canvas.height );
+    try {
+        eval(txt.value);
+    } catch {
+    }
+    
+    window.requestAnimationFrame(update);
+}
+window.requestAnimationFrame(update);
+</script>
+</body>
+</html>
