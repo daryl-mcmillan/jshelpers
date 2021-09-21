@@ -1,0 +1,250 @@
+<html>
+<head>
+<title>puppet</title>
+</head>
+
+<body>
+<script src="https://www.dcodes.org/jshelpers/matrix3.js"></script>
+<script>
+var canvas = document.createElement("canvas");
+canvas.width = 800;
+canvas.height = 600;
+document.body.appendChild( canvas );
+var context = canvas.getContext( "2d" );
+function line( p1, p2 ) {
+	context.moveTo(p1.x, p1.y);
+	context.lineTo(p2.x, p2.y);
+}
+function PuppetNode( {id, width, height, anchor, position, rotation, children} ) {
+	this.id = id;
+	this.width = width;
+	this.height = height;
+	this.points = [
+		Vector3.point( width/2, height/2 ),
+		Vector3.point( width/2, -height/2 ),
+		Vector3.point( -width/2, -height/2 ),
+		Vector3.point( -width/2, height/2 )
+	];
+	this.sides = [
+		{ p1: 0, p2: 1 },
+		{ p1: 1, p2: 2 },
+		{ p1: 2, p2: 3 },
+		{ p1: 3, p2: 0 }
+	];
+	this.anchor = anchor;
+	this.position = position;
+	this.rotation = rotation;
+	this.children = children;
+	return this;
+}
+PuppetNode.prototype.draw = function( transform ) {
+	transform = transform.mul( Matrix3.translate( this.anchor ) );
+	transform = transform.mul( Matrix3.rotate( this.rotation ) );
+	transform = transform.mul( Matrix3.translate( this.position ) );
+	var points = transform.mul( this.points );
+	for( var i=0; i<this.sides.length; i++ ) {
+		var side = this.sides[i];
+		line( points[side.p1], points[side.p2] );
+	}
+	for( var i=0; i<this.children.length; i++ ) {
+		this.children[i].draw( transform );
+	}
+};
+PuppetNode.prototype.getRotations = function( rotations ) {
+	if( rotations === undefined ) {
+		rotations = {};
+	}
+	rotations[this.id] = this.rotation;
+	for( var i=0; i<this.children.length; i++ ) {
+		this.children[i].getRotations( rotations );
+	}
+	return rotations;
+};
+PuppetNode.prototype.setRotations = function( rotations ) {
+	if( rotations[this.id] !== undefined ) {
+		this.rotation = rotations[this.id];
+	}
+	for( var i=0; i<this.children.length; i++ ) {
+		this.children[i].setRotations( rotations );
+	}
+};
+
+var puppet = new PuppetNode( {
+	id: "body",
+	width: 100,
+	height: 200,
+	anchor: Vector3.point(0,0),
+	position: Vector3.point(0,0),
+	rotation: 0.3,
+	children: [
+		// right leg
+		new PuppetNode( {
+			id: "right hip",
+			width: 50,
+			height: 150,
+			anchor: Vector3.point( 30, -90 ),
+			position: Vector3.point( 0, -60 ),
+			rotation: 0.1,
+			children: [
+				new PuppetNode( {
+					id: "right knee",
+					width: 45,
+					height: 150,
+					anchor: Vector3.point( 0, -75 ),
+					position: Vector3.point( 0, -60 ),
+					rotation: 0.1,
+					children: [
+					]
+				} ),
+			]
+		} ),
+		// left leg
+		new PuppetNode( {
+			id: "left hip",
+			width: 50,
+			height: 150,
+			anchor: Vector3.point( -30, -90 ),
+			position: Vector3.point( 0, -60 ),
+			rotation: 0.1,
+			children: [
+				new PuppetNode( {
+					id: "left knee",
+					width: 45,
+					height: 150,
+					anchor: Vector3.point( 0, -75 ),
+					position: Vector3.point( 0, -60 ),
+					rotation: -0.1,
+					children: [
+					]
+				} ),
+			]
+		} ),
+		// left arm
+		new PuppetNode( {
+			id: "left shoulder",
+			width: 50,
+			height: 150,
+			anchor: Vector3.point( -40, 80 ),
+			position: Vector3.point( 0, -60 ),
+			rotation: 0.5,
+			children: [
+				new PuppetNode( {
+					id: "left elbow",
+					width: 45,
+					height: 150,
+					anchor: Vector3.point( 0, -75 ),
+					position: Vector3.point( 0, -60 ),
+					rotation: 0.1,
+					children: [
+					]
+				} ),
+			]
+		} ),
+		// right arm
+		new PuppetNode( {
+			id: "right shoulder",
+			width: 50,
+			height: 150,
+			anchor: Vector3.point( 40, 80 ),
+			position: Vector3.point( 0, -60 ),
+			rotation: -0.5,
+			children: [
+				new PuppetNode( {
+					id: "right elbow",
+					width: 45,
+					height: 150,
+					anchor: Vector3.point( 0, -75 ),
+					position: Vector3.point( 0, -60 ),
+					rotation: 0.1,
+					children: [
+					]
+				} ),
+			]
+		} ),
+		// head
+		new PuppetNode( {
+			id: "neck",
+			width: 40,
+			height: 60,
+			anchor: Vector3.point( 0, 100 ),
+			position: Vector3.point( 0, 20 ),
+			rotation: -0.5,
+			children: [
+				new PuppetNode( {
+					id: "head",
+					width: 100,
+					height: 100,
+					anchor: Vector3.point( 0, 30 ),
+					position: Vector3.point( 0, 30 ),
+					rotation: 0.1,
+					children: [
+					]
+				} ),
+			]
+		} ),
+	]
+} );
+
+var sliders = [];
+function addSlider( node ) {
+	var slider = document.createElement( "input" );
+	slider.type = "range"
+	slider.min = -180;
+	slider.max = 180;
+	slider.value = parseInt( node.rotation * 180 / Math.PI );
+	var update = function() {
+		node.rotation = parseInt( slider.value ) / 180 * Math.PI;
+	};
+	slider.onchange = update;
+	slider.onmousemove = update;
+	document.body.appendChild( document.createElement("br") );
+	document.body.appendChild( slider );
+	sliders.push( slider );
+}
+
+function updateSliders() {
+	for( var i=0; i<sliders.length; i++ ) {
+		sliders[i].onchange();
+	}
+}
+
+function addLabel( txt ) {
+	document.body.appendChild( document.createElement("br") );
+	document.body.appendChild( document.createTextNode( txt ) );
+}
+
+addLabel( "puppet" );
+addSlider( puppet );
+addLabel( "right leg" );
+addSlider( puppet.children[0] );
+addSlider( puppet.children[0].children[0] );
+addLabel( "left leg" );
+addSlider( puppet.children[1] );
+addSlider( puppet.children[1].children[0] );
+addLabel( "left arm" );
+addSlider( puppet.children[2] );
+addSlider( puppet.children[2].children[0] );
+addLabel( "right arm" );
+addSlider( puppet.children[3] );
+addSlider( puppet.children[3].children[0] );
+addLabel( "head" );
+addSlider( puppet.children[4] );
+addSlider( puppet.children[4].children[0] );
+
+var camera = Matrix3.identity();
+camera = camera.mul( Matrix3.translate( Vector3.vector( canvas.width/2, canvas.height/2 ) ) );
+camera = camera.mul( Matrix3.scale( Vector3.vector( 0.5, -0.5 ) ) );
+
+function draw() {
+	//updateSliders();
+	context.clearRect(0,0,canvas.width,canvas.height);
+	context.beginPath();
+	puppet.draw( camera );
+	context.stroke();
+	window.requestAnimationFrame( draw );
+}
+window.requestAnimationFrame( draw );
+
+</script>
+</body>
+</html>
