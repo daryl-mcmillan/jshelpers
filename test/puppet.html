@@ -68,6 +68,24 @@ PuppetNode.prototype.setRotations = function( rotations ) {
 		this.children[i].setRotations( rotations );
 	}
 };
+PuppetNode.prototype.getObject = function( point ) {
+	point = Matrix3.translate( this.anchor.mul( Vector3.vector(-1,-1) ) ).mul( point );
+	point = Matrix3.rotate( -this.rotation ).mul( point );
+	point = Matrix3.translate( this.position.mul( Vector3.vector(-1,-1) ) ).mul( point );
+	for( var i=0; i<this.children.length; i++ ) {
+		var obj = this.children[i].getObject(point);
+		if( obj !== null ) {
+			return obj;
+		}
+	}
+	if( Math.abs(point.x) > this.width/2 ) {
+		return null;
+	}
+	if( Math.abs(point.y) > this.height/2 ) {
+		return null;
+	}
+	return this;
+};
 
 var puppet = new PuppetNode( {
 	id: "body",
@@ -199,58 +217,40 @@ puppet.setRotations( {
 	"head": -0.3665191429188092
 } );
 
-var sliders = [];
-function addSlider( node ) {
-	var slider = document.createElement( "input" );
-	slider.type = "range"
-	slider.min = -180;
-	slider.max = 180;
-	slider.value = parseInt( node.rotation * 180 / Math.PI );
-	var update = function() {
-		node.rotation = parseInt( slider.value ) / 180 * Math.PI;
-	};
-	slider.onchange = update;
-	slider.onmousemove = update;
-	document.body.appendChild( document.createElement("br") );
-	document.body.appendChild( slider );
-	sliders.push( slider );
-}
-
-function updateSliders() {
-	for( var i=0; i<sliders.length; i++ ) {
-		sliders[i].onchange();
-	}
-}
-
-function addLabel( txt ) {
-	document.body.appendChild( document.createElement("br") );
-	document.body.appendChild( document.createTextNode( txt ) );
-}
-
-addLabel( "puppet" );
-addSlider( puppet );
-addLabel( "right leg" );
-addSlider( puppet.children[0] );
-addSlider( puppet.children[0].children[0] );
-addLabel( "left leg" );
-addSlider( puppet.children[1] );
-addSlider( puppet.children[1].children[0] );
-addLabel( "left arm" );
-addSlider( puppet.children[2] );
-addSlider( puppet.children[2].children[0] );
-addLabel( "right arm" );
-addSlider( puppet.children[3] );
-addSlider( puppet.children[3].children[0] );
-addLabel( "head" );
-addSlider( puppet.children[4] );
-addSlider( puppet.children[4].children[0] );
-
 var camera = Matrix3.identity();
 camera = camera.mul( Matrix3.translate( Vector3.vector( canvas.width/2, canvas.height/2 ) ) );
 camera = camera.mul( Matrix3.scale( Vector3.vector( 0.5, -0.5 ) ) );
 
+var camera_inverse = Matrix3.identity();
+camera_inverse = camera_inverse.mul( Matrix3.scale( Vector3.vector( 2, -2 ) ) );
+camera_inverse = camera_inverse.mul( Matrix3.translate( Vector3.vector( -canvas.width/2, -canvas.height/2 ) ) );
+
+var spinning = null;
+canvas.onmousedown = function(e) {
+	var mouse = Vector3.point( e.offsetX, e.offsetY );
+	var mapped_mouse = camera_inverse.mul( mouse );
+	var obj = puppet.getObject( mapped_mouse );
+	if( obj !== null ) {
+		console.log( obj.id );
+		spinning = {
+			obj: obj,
+			baseRotation: obj.rotation,
+			start: mouse
+		};
+	}
+};
+canvas.onmousemove = function(e) {
+	if( spinning === null ) {
+		return;
+	}
+	var dy = e.offsetY - spinning.start.y;
+	spinning.obj.rotation = spinning.baseRotation + dy / 100;
+};
+canvas.onmouseup = function(e) {
+	spinning = null;
+};
+
 function draw() {
-	//updateSliders();
 	context.clearRect(0,0,canvas.width,canvas.height);
 	context.beginPath();
 	puppet.draw( camera );
