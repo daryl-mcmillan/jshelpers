@@ -122,20 +122,24 @@ function angleDistance( from, to ) {
     return result;
 }
 
-var Tire = function( traction ) {
+var Tire = function( name, traction ) {
+	this.name = name;
 	this.traction = traction;
 	return this;
 };
 Tire.prototype.react = function( road, force ) {
 	var lateral = clamp(force.x, -this.traction, this.traction);
 	if( Math.abs(lateral) === this.traction ) {
+		//console.log( `${this.name} ${lateral} ${force.x}` );
 		road.add_decal();
 	}
 	return Vector3.vector( -lateral, 0 );
 };
 
-var front_tire = new Tire(0.30);
-var back_tire = new Tire(0.27);
+var tire_fl = new Tire("fl",0.50);
+var tire_fr = new Tire("fr",0.50);
+var tire_bl = new Tire("bl",0.50);
+var tire_br = new Tire("br",0.50);
 
 function getRoad( p ) {
 	return {
@@ -192,22 +196,22 @@ var car = {
 			{
 				a: this.steer,
 				p: Vector3.point(-5,5),
-				tire: front_tire
+				tire: tire_fl
 			},
 			{
 				a: this.steer,
 				p: Vector3.point(5,5),
-				tire: front_tire
+				tire: tire_fr
 			},
 			{
 				a: this.angle,
 				p: Vector3.point(-5,-5),
-				tire: back_tire
+				tire: tire_bl
 			},
 			{
 				a: this.angle,
 				p: Vector3.point(5,-5),
-				tire: back_tire
+				tire: tire_br
 			}
 		];
 		// wheels
@@ -241,8 +245,11 @@ var car = {
 			var reaction = wheel.tire.react(road, wheelVelocity);
 			reaction_v = reaction_v.add(wheelToWorld.mul(reaction));
 			var angularAmount = reaction.dot(wheelAngularDirection) / wheelDistance / 4;
+			console.log( angularAmount );
 			reaction_w = reaction_w + angularAmount;
 		}
+
+		console.log( { w: this.w, react: reaction_w } );
 
 		this.v = this.v.add(reaction_v);
 		this.w = this.w + reaction_w;
