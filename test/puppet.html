@@ -262,7 +262,54 @@ function interpolate( a, b, t ) {
 	return result;
 }
 
-function draw() {
+var animations = {
+	ready: [],
+	running: [],
+	add: function( func ) {
+		this.ready.push( func );
+	},
+	update: function( t ) {
+		var newRunning = [];
+		for( var i=0; i<this.running.length; i++ ) {
+			var stillRunning = this.running[i].update(t);
+			if( stillRunning ) {
+				newRunning.push( this.running[i] );
+			}
+		}
+		this.running = newRunning;
+		for( ;; ) {
+			var func = this.ready.pop();
+			if( func === undefined ) {
+				break;
+			}
+			if( func(0) ) {
+				this.running.push({
+					func: func,
+					startTime: t,
+					update: function( tupdate ) {
+						var animationTime = tupdate - this.startTime;
+						return this.func( animationTime );
+					}
+				});
+			}
+		}
+	}
+};
+
+function animate( a, b, update, duration ) {
+	animations.add( function(t) {
+		var amount = t/duration;
+		if( amount > 1 ) {
+			update( b );
+			return false;
+		}
+		update( interpolate(a, b, amount) );
+		return true;
+	} );
+}
+
+function draw(t) {
+	animations.update(t);
 	context.clearRect(0,0,canvas.width,canvas.height);
 	context.beginPath();
 	puppet.draw( camera );
